@@ -1,0 +1,40 @@
+{
+  "repositories": {
+    "targets": [
+      "organization/repository1",
+      "organization/repository2"
+    ]
+  },
+  "period": {
+    "start_date": "2025-10-01T00:00:00Z",
+    "end_date": "2025-12-19T23:59:59Z"
+  },
+  "work_hours": {
+    "start_hour": 9,
+    "start_minute": 30,
+    "end_hour": 18,
+    "end_minute": 30
+  },
+  "holidays": [
+    {
+      "dates": [
+        "2025-10-14",
+        "2025-11-04",
+        "2025-11-23",
+        "2025-12-23"
+      ]
+    }
+  ],
+  "placeholders": {
+    "patterns": [
+      "xx 時間",
+      "xx時間",
+      "約xx時間",
+      "XX時間"
+    ]
+  },
+  "options": {
+    "dry_run": false,
+    "verbose": true
+  }
+}
