@@ -60,7 +60,7 @@ func main() {
 	// DI配線
 	calculator := services.NewCalculator(config)
 	github := ghcli.NewGitHubRepository()
-	service := application.NewPRDurationService(config, github, calculator)
+	service := application.NewPRDurationService(config, github, calculator, os.Stdout)
 
 	// ヘッダー出力
 	fmt.Println("================================================================================")
