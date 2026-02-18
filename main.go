@@ -12,6 +12,7 @@ import (
 	"github.com/connect0459/edit-pr-duration/internal/domain/valueobjects"
 	"github.com/connect0459/edit-pr-duration/internal/infrastructure/ghcli"
 	"github.com/connect0459/edit-pr-duration/internal/infrastructure/json"
+	"github.com/connect0459/edit-pr-duration/pkg/spinner"
 )
 
 func main() {
@@ -59,14 +60,17 @@ func main() {
 	fmt.Printf("対象期間: %s ~ %s\n", period.StartDate.Format("2006-01-02"), period.EndDate.Format("2006-01-02"))
 	fmt.Printf("対象リポジトリ数: %d\n", len(config.Repositories()))
 	fmt.Println()
-	fmt.Println("処理中...")
-	fmt.Println()
 
+	sp := spinner.New("処理中...", os.Stdout)
+	sp.Start()
 	result, err := service.Run()
+	sp.Stop()
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+	fmt.Println()
 
 	// リポジトリ名でソートして出力を安定させる
 	repos := make([]application.RepoResult, len(result.Repos))
