@@ -47,49 +47,64 @@ func NewPRDurationService(
 	}
 }
 
-// Result は実行結果を表す
-type Result struct {
+// PRSummary は更新されたPRの概要を表す
+type PRSummary struct {
+	Number   int
+	Duration string
+}
+
+// RepoResult は単一リポジトリの処理結果を表す
+type RepoResult struct {
+	Repo        string
+	PRs         []PRSummary
 	TotalPRs    int
 	NeedsUpdate int
 	Updated     int
 	Failed      int
 }
 
-func (r *Result) merge(other Result) {
-	r.TotalPRs += other.TotalPRs
-	r.NeedsUpdate += other.NeedsUpdate
-	r.Updated += other.Updated
-	r.Failed += other.Failed
+// RunResult は全リポジトリの処理結果を表す
+type RunResult struct {
+	Repos       []RepoResult
+	TotalPRs    int
+	NeedsUpdate int
+	Updated     int
+	Failed      int
+}
+
+func (r *RunResult) merge(repo RepoResult) {
+	r.Repos = append(r.Repos, repo)
+	r.TotalPRs += repo.TotalPRs
+	r.NeedsUpdate += repo.NeedsUpdate
+	r.Updated += repo.Updated
+	r.Failed += repo.Failed
 }
 
 // Run は全リポジトリのPRを並列処理する
-func (s *PRDurationService) Run() (*Result, error) {
+func (s *PRDurationService) Run() (*RunResult, error) {
 	repos := s.config.Repositories()
 
-	type repoResult struct {
-		result Result
+	type repoResultItem struct {
+		result RepoResult
 		err    error
 	}
 
-	results := make(chan repoResult, len(repos))
+	results := make(chan repoResultItem, len(repos))
 	var wg sync.WaitGroup
 
-	for i, repo := range repos {
+	for _, repo := range repos {
 		wg.Add(1)
-		go func(index int, repo string) {
+		go func(repo string) {
 			defer wg.Done()
-			if s.config.Options().Verbose {
-				fmt.Fprintf(s.output, "[%d/%d] %s を処理中...\n", index+1, len(repos), repo)
-			}
 			r, err := s.processRepo(repo)
-			results <- repoResult{r, err}
-		}(i, repo)
+			results <- repoResultItem{r, err}
+		}(repo)
 	}
 
 	wg.Wait()
 	close(results)
 
-	var combined Result
+	var combined RunResult
 	for r := range results {
 		if r.err != nil {
 			return nil, r.err
@@ -101,18 +116,22 @@ func (s *PRDurationService) Run() (*Result, error) {
 }
 
 // processRepo は単一リポジトリの全PRを処理する
-func (s *PRDurationService) processRepo(repo string) (Result, error) {
+func (s *PRDurationService) processRepo(repo string) (RepoResult, error) {
 	period := s.config.Period()
 	prNumbers, err := s.github.ListPRs(repo, period.StartDate, period.EndDate)
 	if err != nil {
-		return Result{}, fmt.Errorf("failed to list PRs for %s: %w", repo, err)
+		return RepoResult{}, fmt.Errorf("failed to list PRs for %s: %w", repo, err)
 	}
 
-	type prResult struct {
-		result Result
+	type prResultItem struct {
+		summary *PRSummary
+		total   int
+		needs   int
+		updated int
+		failed  int
 	}
 
-	results := make(chan prResult, len(prNumbers))
+	results := make(chan prResultItem, len(prNumbers))
 	sem := make(chan struct{}, maxConcurrentPRFetches)
 	var wg sync.WaitGroup
 
@@ -123,37 +142,43 @@ func (s *PRDurationService) processRepo(repo string) (Result, error) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			r := s.processPR(repo, prNumber)
-			results <- prResult{r}
+			summary, total, needs, updated, failed := s.processPR(repo, prNumber)
+			results <- prResultItem{summary, total, needs, updated, failed}
 		}(prNumber)
 	}
 
 	wg.Wait()
 	close(results)
 
-	var combined Result
+	repoResult := RepoResult{Repo: repo}
 	for r := range results {
-		combined.merge(r.result)
+		repoResult.TotalPRs += r.total
+		repoResult.NeedsUpdate += r.needs
+		repoResult.Updated += r.updated
+		repoResult.Failed += r.failed
+		if r.summary != nil {
+			repoResult.PRs = append(repoResult.PRs, *r.summary)
+		}
 	}
 
-	return combined, nil
+	return repoResult, nil
 }
 
 // processPR は単一PRを処理し、その結果を返す
-func (s *PRDurationService) processPR(repo string, prNumber int) Result {
-	result := Result{TotalPRs: 1}
+func (s *PRDurationService) processPR(repo string, prNumber int) (summary *PRSummary, total, needs, updated, failed int) {
+	total = 1
 
 	prInfo, err := s.github.GetPRInfo(repo, prNumber, s.config.Placeholders())
 	if err != nil {
 		fmt.Fprintf(s.output, "[ERROR] %s#%d: PR取得に失敗: %v\n", repo, prNumber, err)
-		result.Failed++
-		return result
+		failed++
+		return
 	}
 
 	if !prInfo.NeedsUpdate() {
-		return result
+		return
 	}
-	result.NeedsUpdate++
+	needs++
 
 	var endTime *time.Time
 	if prInfo.MergedAt() != nil {
@@ -162,7 +187,7 @@ func (s *PRDurationService) processPR(repo string, prNumber int) Result {
 		endTime = prInfo.ClosedAt()
 	}
 	if endTime == nil {
-		return result
+		return
 	}
 
 	workHours := s.calculator.CalculateWorkHours(prInfo.CreatedAt(), *endTime)
@@ -183,20 +208,18 @@ func (s *PRDurationService) processPR(repo string, prNumber int) Result {
 
 	newBody := updatedPRInfo.UpdatedBody()
 	if newBody == prInfo.Body() {
-		return result
+		return
 	}
 
 	if !s.config.Options().DryRun {
 		if err := s.github.UpdatePRBody(repo, prNumber, newBody); err != nil {
 			fmt.Fprintf(s.output, "[ERROR] %s#%d: PR更新に失敗: %v\n", repo, prNumber, err)
-			result.Failed++
-			return result
+			failed++
+			return
 		}
 	}
 
-	if s.config.Options().Verbose {
-		fmt.Fprintf(s.output, "  PR #%d: %s\n", prNumber, workHoursFormatted)
-	}
-	result.Updated++
-	return result
+	summary = &PRSummary{Number: prNumber, Duration: workHoursFormatted}
+	updated++
+	return
 }

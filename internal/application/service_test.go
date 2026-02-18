@@ -120,7 +120,7 @@ func TestPRDurationService(t *testing.T) {
 				t.Fatalf("エラーが発生: %v", err)
 			}
 			if result.Updated != 1 {
-				t.Errorf("期待値: 1件更新（Dry-run）, 実際: %d件", result.Updated)
+				t.Errorf("期待値: 1件カウント（Dry-run）, 実際: %d件", result.Updated)
 			}
 		})
 
@@ -167,36 +167,70 @@ func TestPRDurationService(t *testing.T) {
 		})
 	})
 
+	t.Run("リポジトリ別結果", func(t *testing.T) {
+		t.Run("Run()が各リポジトリの結果を個別のRepoResultとして返す", func(t *testing.T) {
+			repos := []string{"org/repo-x", "org/repo-y"}
+			test := setup(t, repos, false, false)
+			test.github.AddPR(makePR("org/repo-x", 1, "実際にかかった時間: xx 時間", true))
+			test.github.AddPR(makePR("org/repo-y", 2, "実際にかかった時間: xx 時間", true))
+
+			result, err := test.service.Run()
+
+			if err != nil {
+				t.Fatalf("エラーが発生: %v", err)
+			}
+			if len(result.Repos) != 2 {
+				t.Errorf("期待値: 2リポジトリ, 実際: %d", len(result.Repos))
+			}
+		})
+
+		t.Run("Run()が更新したPRのサマリーをRepoResultに含める", func(t *testing.T) {
+			test := setup(t, []string{"org/repo"}, false, false)
+			test.github.AddPR(makePR("org/repo", 42, "実際にかかった時間: xx 時間", true))
+
+			result, err := test.service.Run()
+
+			if err != nil {
+				t.Fatalf("エラーが発生: %v", err)
+			}
+			if len(result.Repos) != 1 {
+				t.Fatalf("期待値: 1リポジトリ, 実際: %d", len(result.Repos))
+			}
+			repoResult := result.Repos[0]
+			if repoResult.Repo != "org/repo" {
+				t.Errorf("期待値: org/repo, 実際: %s", repoResult.Repo)
+			}
+			if len(repoResult.PRs) != 1 {
+				t.Fatalf("期待値: 1件のPRサマリー, 実際: %d件", len(repoResult.PRs))
+			}
+			if repoResult.PRs[0].Number != 42 {
+				t.Errorf("期待値: PR#42, 実際: PR#%d", repoResult.PRs[0].Number)
+			}
+			if repoResult.PRs[0].Duration == "" {
+				t.Error("Durationが空です")
+			}
+		})
+
+		t.Run("プレースホルダーがないPRはPRサマリーに含まれない", func(t *testing.T) {
+			test := setup(t, []string{"org/repo"}, false, false)
+			test.github.AddPR(makePR("org/repo", 10, "This is a test PR body", false))
+
+			result, err := test.service.Run()
+
+			if err != nil {
+				t.Fatalf("エラーが発生: %v", err)
+			}
+			if len(result.Repos) != 1 {
+				t.Fatalf("期待値: 1リポジトリ, 実際: %d", len(result.Repos))
+			}
+			if len(result.Repos[0].PRs) != 0 {
+				t.Errorf("期待値: 0件のPRサマリー, 実際: %d件", len(result.Repos[0].PRs))
+			}
+		})
+	})
+
 	t.Run("ログ出力", func(t *testing.T) {
-		t.Run("verboseモードのとき処理中のリポジトリ名をログに出力する", func(t *testing.T) {
-			test := setup(t, []string{"org/target-repo"}, false, true)
-			test.github.AddPR(makePR("org/target-repo", 1, "実際にかかった時間: xx 時間", true))
-
-			_, err := test.service.Run()
-
-			if err != nil {
-				t.Fatalf("エラーが発生: %v", err)
-			}
-			if !strings.Contains(test.output.String(), "org/target-repo") {
-				t.Errorf("リポジトリ名がログに含まれていない: %q", test.output.String())
-			}
-		})
-
-		t.Run("verboseモードのとき更新したPR番号をログに出力する", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, true)
-			test.github.AddPR(makePR("org/repo", 999, "実際にかかった時間: xx 時間", true))
-
-			_, err := test.service.Run()
-
-			if err != nil {
-				t.Fatalf("エラーが発生: %v", err)
-			}
-			if !strings.Contains(test.output.String(), "999") {
-				t.Errorf("PR番号がログに含まれていない: %q", test.output.String())
-			}
-		})
-
-		t.Run("verbose=falseのとき通常の処理でログを出力しない", func(t *testing.T) {
+		t.Run("通常の処理でログを出力しない", func(t *testing.T) {
 			test := setup(t, []string{"org/repo"}, false, false)
 			test.github.AddPR(makePR("org/repo", 1, "実際にかかった時間: xx 時間", true))
 
@@ -206,7 +240,7 @@ func TestPRDurationService(t *testing.T) {
 				t.Fatalf("エラーが発生: %v", err)
 			}
 			if test.output.Len() != 0 {
-				t.Errorf("verbose=false のとき出力があってはならない: %q", test.output.String())
+				t.Errorf("通常の処理で出力があってはならない: %q", test.output.String())
 			}
 		})
 
