@@ -10,10 +10,10 @@ import (
 
 // GitHubRepository はテスト用のインメモリGitHubRepository実装
 type GitHubRepository struct {
-	mu            sync.RWMutex
-	prs           map[string]map[int]*entities.PRInfo // repo -> number -> PRInfo
-	getPRInfoErrs map[string]error                    // "repo#number" -> error
-	updateBodyErrs map[string]error                   // "repo#number" -> error
+	mu             sync.RWMutex
+	prs            map[string]map[int]*entities.PRInfo // repo -> number -> PRInfo
+	getPRInfoErrs  map[string]error                    // "repo#number" -> error
+	updateBodyErrs map[string]error                    // "repo#number" -> error
 }
 
 // NewGitHubRepository はインメモリ実装のGitHubRepositoryを返す
