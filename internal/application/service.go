@@ -13,6 +13,17 @@ import (
 
 const maxConcurrentPRFetches = 5
 
+type syncWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func (sw *syncWriter) Write(p []byte) (n int, err error) {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+	return sw.w.Write(p)
+}
+
 // PRDurationService はPR作業時間更新のユースケースを提供する
 type PRDurationService struct {
 	config     *entities.Config
@@ -32,7 +43,7 @@ func NewPRDurationService(
 		config:     config,
 		github:     github,
 		calculator: calculator,
-		output:     output,
+		output:     &syncWriter{w: output},
 	}
 }
 
@@ -106,10 +117,10 @@ func (s *PRDurationService) processRepo(repo string) (Result, error) {
 	var wg sync.WaitGroup
 
 	for _, prNumber := range prNumbers {
+		sem <- struct{}{}
 		wg.Add(1)
 		go func(prNumber int) {
 			defer wg.Done()
-			sem <- struct{}{}
 			defer func() { <-sem }()
 
 			r := s.processPR(repo, prNumber)
