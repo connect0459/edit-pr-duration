@@ -37,10 +37,6 @@ func TestConfigRepository(t *testing.T) {
 				],
 				"placeholders": {
 					"patterns": ["xx 時間", "XX 時間"]
-				},
-				"options": {
-					"dry_run": false,
-					"verbose": true
 				}
 			}`
 
@@ -98,14 +94,6 @@ func TestConfigRepository(t *testing.T) {
 				t.Errorf("期待値: 2パターン, 実際: %d", len(placeholders))
 			}
 
-			// オプション検証
-			options := config.Options()
-			if options.DryRun != false {
-				t.Error("DryRunがfalseではありません")
-			}
-			if options.Verbose != true {
-				t.Error("Verboseがtrueではありません")
-			}
 		})
 
 		t.Run("ファイルが存在しない場合はエラーを返す", func(t *testing.T) {

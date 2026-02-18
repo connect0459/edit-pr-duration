@@ -39,10 +39,6 @@ type configJSON struct {
 	Placeholders struct {
 		Patterns []string `json:"patterns"`
 	} `json:"placeholders"`
-	Options struct {
-		DryRun  bool `json:"dry_run"`
-		Verbose bool `json:"verbose"`
-	} `json:"options"`
 }
 
 // Load は指定されたパスからJSON設定を読み込む
@@ -111,10 +107,7 @@ func (r *configRepository) Load(path string) (*entities.Config, error) {
 		},
 		holidays,
 		cfg.Placeholders.Patterns,
-		valueobjects.Options{
-			DryRun:  cfg.Options.DryRun,
-			Verbose: cfg.Options.Verbose,
-		},
+		valueobjects.Options{},
 	)
 
 	return config, nil

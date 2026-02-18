@@ -32,9 +32,5 @@
       "約xx時間",
       "XX時間"
     ]
-  },
-  "options": {
-    "dry_run": false,
-    "verbose": true
   }
 }
