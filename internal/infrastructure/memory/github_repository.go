@@ -2,6 +2,7 @@ package memory
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/connect0459/edit-pr-duration/internal/domain/entities"
@@ -9,26 +10,51 @@ import (
 
 // GitHubRepository はテスト用のインメモリGitHubRepository実装
 type GitHubRepository struct {
-	prs map[string]map[int]*entities.PRInfo // repo -> number -> PRInfo
+	mu            sync.RWMutex
+	prs           map[string]map[int]*entities.PRInfo // repo -> number -> PRInfo
+	getPRInfoErrs map[string]error                    // "repo#number" -> error
+	updateBodyErrs map[string]error                   // "repo#number" -> error
 }
 
 // NewGitHubRepository はインメモリ実装のGitHubRepositoryを返す
 func NewGitHubRepository() *GitHubRepository {
 	return &GitHubRepository{
-		prs: make(map[string]map[int]*entities.PRInfo),
+		prs:            make(map[string]map[int]*entities.PRInfo),
+		getPRInfoErrs:  make(map[string]error),
+		updateBodyErrs: make(map[string]error),
 	}
 }
 
 // AddPR はテスト用にPR情報を追加する
 func (r *GitHubRepository) AddPR(prInfo *entities.PRInfo) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if r.prs[prInfo.Repo()] == nil {
 		r.prs[prInfo.Repo()] = make(map[int]*entities.PRInfo)
 	}
 	r.prs[prInfo.Repo()][prInfo.Number()] = prInfo
 }
 
+// SetGetPRInfoError は指定PRのGetPRInfo呼び出しでエラーを返すよう設定する
+func (r *GitHubRepository) SetGetPRInfoError(repo string, number int, err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.getPRInfoErrs[fmt.Sprintf("%s#%d", repo, number)] = err
+}
+
+// SetUpdatePRBodyError は指定PRのUpdatePRBody呼び出しでエラーを返すよう設定する
+func (r *GitHubRepository) SetUpdatePRBodyError(repo string, number int, err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.updateBodyErrs[fmt.Sprintf("%s#%d", repo, number)] = err
+}
+
 // ListPRs は指定期間内に作成されたPR番号のリストを返す
 func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time) ([]int, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	repoPRs, ok := r.prs[repo]
 	if !ok {
 		return []int{}, nil
@@ -36,7 +62,6 @@ func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time) ([
 
 	var prNumbers []int
 	for number, prInfo := range repoPRs {
-		// 期間内に作成されたPRのみを対象
 		if (prInfo.CreatedAt().Equal(startDate) || prInfo.CreatedAt().After(startDate)) &&
 			(prInfo.CreatedAt().Equal(endDate) || prInfo.CreatedAt().Before(endDate)) {
 			prNumbers = append(prNumbers, number)
@@ -48,6 +73,14 @@ func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time) ([
 
 // GetPRInfo はPR詳細情報を取得する
 func (r *GitHubRepository) GetPRInfo(repo string, number int, placeholders []string) (*entities.PRInfo, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	key := fmt.Sprintf("%s#%d", repo, number)
+	if err, ok := r.getPRInfoErrs[key]; ok {
+		return nil, err
+	}
+
 	repoPRs, ok := r.prs[repo]
 	if !ok {
 		return nil, fmt.Errorf("repository not found: %s", repo)
@@ -61,8 +94,16 @@ func (r *GitHubRepository) GetPRInfo(repo string, number int, placeholders []str
 	return prInfo, nil
 }
 
-// UpdatePRBody はPRのbodyを更新する（インメモリ実装では実際には更新しない）
+// UpdatePRBody はPRのbodyを更新する
 func (r *GitHubRepository) UpdatePRBody(repo string, number int, body string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	key := fmt.Sprintf("%s#%d", repo, number)
+	if err, ok := r.updateBodyErrs[key]; ok {
+		return err
+	}
+
 	repoPRs, ok := r.prs[repo]
 	if !ok {
 		return fmt.Errorf("repository not found: %s", repo)
@@ -73,7 +114,6 @@ func (r *GitHubRepository) UpdatePRBody(repo string, number int, body string) er
 		return fmt.Errorf("PR not found: %s#%d", repo, number)
 	}
 
-	// インメモリ実装では、PRInfoを新しいbodyで更新
 	updatedPRInfo := entities.NewPRInfo(
 		prInfo.Repo(),
 		prInfo.Number(),
@@ -81,7 +121,7 @@ func (r *GitHubRepository) UpdatePRBody(repo string, number int, body string) er
 		prInfo.CreatedAt(),
 		prInfo.MergedAt(),
 		prInfo.ClosedAt(),
-		body, // 新しいbody
+		body,
 		prInfo.WorkHours(),
 		prInfo.WorkHoursFormatted(),
 		prInfo.NeedsUpdate(),
