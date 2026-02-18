@@ -17,10 +17,11 @@ GitHub PRのbodyに記載されている「実際にかかった時間: xx 時�
 
 ```bash
 # プロジェクトディレクトリに移動
-cd /Users/akira/workspaces/repo/connect-labo/workspaces/go/edit-pr-duration
+cd /Users/akira/workspaces/repo/edit-pr-duration
 
 # ビルド
-go build -o edit-pr-duration main.go
+# go build -o edit-pr-duration main.go も可
+go build
 ```
 
 ## 使い方
