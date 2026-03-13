@@ -21,7 +21,7 @@ type ServiceTest struct {
 	output  *bytes.Buffer
 }
 
-func setup(t *testing.T, repos []string, dryRun bool, verbose bool) *ServiceTest {
+func setup(t *testing.T, repos []string, dryRun bool, verbose bool, author string) *ServiceTest {
 	t.Helper()
 
 	config := entities.NewConfig(
@@ -38,7 +38,7 @@ func setup(t *testing.T, repos []string, dryRun bool, verbose bool) *ServiceTest
 		},
 		[]time.Time{},
 		[]string{"xx 時間", "XX 時間"},
-		"",
+		author,
 		valueobjects.Options{
 			DryRun:  dryRun,
 			Verbose: verbose,
@@ -98,7 +98,7 @@ func makeDraftPR(repo string, number int, body string, needsUpdate bool) *entiti
 func TestPRDurationService(t *testing.T) {
 	t.Run("PR更新処理", func(t *testing.T) {
 		t.Run("プレースホルダーを含むPRを更新できる", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			test.github.AddPR(makePR("org/repo", 123, "実際にかかった時間: xx 時間", true))
 
 			result, err := test.service.Run()
@@ -115,7 +115,7 @@ func TestPRDurationService(t *testing.T) {
 		})
 
 		t.Run("プレースホルダーがないPRはスキップされる", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			test.github.AddPR(makePR("org/repo", 123, "This is a test PR body", false))
 
 			result, err := test.service.Run()
@@ -132,7 +132,7 @@ func TestPRDurationService(t *testing.T) {
 		})
 
 		t.Run("Draft→ReadyになったPRはreadyForReviewAt基準で更新できる", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			test.github.AddPR(makeDraftPR("org/repo", 123, "実際にかかった時間: xx 時間", true))
 
 			result, err := test.service.Run()
@@ -143,10 +143,38 @@ func TestPRDurationService(t *testing.T) {
 			if result.Updated != 1 {
 				t.Errorf("期待値: 1件更新, 実際: %d件", result.Updated)
 			}
+			if len(result.Repos) != 1 || len(result.Repos[0].PRs) != 1 {
+				t.Fatalf("期待値: 1件のPRサマリー, 実際: %d件", len(result.Repos[0].PRs))
+			}
+			// readyForReviewAt(10:00)→mergedAt(15:00) = 5時間
+			// createdAt(9:00)を使うと勤務開始(9:30)→mergedAt(15:00) = 5時間30分になる
+			if got := result.Repos[0].PRs[0].Duration; got != "5時間" {
+				t.Errorf("期待値: 5時間 (readyForReviewAt基準), 実際: %s", got)
+			}
+		})
+
+		t.Run("authorが設定されている場合は該当ユーザーのPRのみを処理できる", func(t *testing.T) {
+			test := setup(t, []string{"org/repo"}, false, false, "user-a")
+			test.github.AddPR(makePR("org/repo", 1, "実際にかかった時間: xx 時間", true))
+			test.github.AddPR(makePR("org/repo", 2, "実際にかかった時間: xx 時間", true))
+			test.github.SetPRAuthor("org/repo", 1, "user-a")
+			test.github.SetPRAuthor("org/repo", 2, "user-b")
+
+			result, err := test.service.Run()
+
+			if err != nil {
+				t.Fatalf("エラーが発生: %v", err)
+			}
+			if result.TotalPRs != 1 {
+				t.Errorf("期待値: 1件処理, 実際: %d件", result.TotalPRs)
+			}
+			if result.Updated != 1 {
+				t.Errorf("期待値: 1件更新, 実際: %d件", result.Updated)
+			}
 		})
 
 		t.Run("Dry-runモードでは実際に更新しない", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, true, false)
+			test := setup(t, []string{"org/repo"}, true, false, "")
 			test.github.AddPR(makePR("org/repo", 123, "実際にかかった時間: xx 時間", true))
 
 			result, err := test.service.Run()
@@ -160,7 +188,7 @@ func TestPRDurationService(t *testing.T) {
 		})
 
 		t.Run("複数のPRを処理できる", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			for i := 1; i <= 3; i++ {
 				test.github.AddPR(makePR("org/repo", 100+i, "実際にかかった時間: xx 時間", true))
 			}
@@ -180,7 +208,7 @@ func TestPRDurationService(t *testing.T) {
 
 		t.Run("複数リポジトリのPRをすべて処理できる", func(t *testing.T) {
 			repos := []string{"org/repo-a", "org/repo-b", "org/repo-c"}
-			test := setup(t, repos, false, false)
+			test := setup(t, repos, false, false, "")
 
 			for _, repo := range repos {
 				for i := 1; i <= 4; i++ {
@@ -205,7 +233,7 @@ func TestPRDurationService(t *testing.T) {
 	t.Run("リポジトリ別結果", func(t *testing.T) {
 		t.Run("Run()が各リポジトリの結果を個別のRepoResultとして返す", func(t *testing.T) {
 			repos := []string{"org/repo-x", "org/repo-y"}
-			test := setup(t, repos, false, false)
+			test := setup(t, repos, false, false, "")
 			test.github.AddPR(makePR("org/repo-x", 1, "実際にかかった時間: xx 時間", true))
 			test.github.AddPR(makePR("org/repo-y", 2, "実際にかかった時間: xx 時間", true))
 
@@ -220,7 +248,7 @@ func TestPRDurationService(t *testing.T) {
 		})
 
 		t.Run("Run()が更新したPRのサマリーをRepoResultに含める", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			test.github.AddPR(makePR("org/repo", 42, "実際にかかった時間: xx 時間", true))
 
 			result, err := test.service.Run()
@@ -247,7 +275,7 @@ func TestPRDurationService(t *testing.T) {
 		})
 
 		t.Run("プレースホルダーがないPRはPRサマリーに含まれない", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			test.github.AddPR(makePR("org/repo", 10, "This is a test PR body", false))
 
 			result, err := test.service.Run()
@@ -266,7 +294,7 @@ func TestPRDurationService(t *testing.T) {
 
 	t.Run("ログ出力", func(t *testing.T) {
 		t.Run("通常の処理でログを出力しない", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			test.github.AddPR(makePR("org/repo", 1, "実際にかかった時間: xx 時間", true))
 
 			_, err := test.service.Run()
@@ -280,7 +308,7 @@ func TestPRDurationService(t *testing.T) {
 		})
 
 		t.Run("PR取得エラー時はverbose設定に関わらずエラー情報をログに出力する", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			test.github.AddPR(makePR("org/repo", 1, "実際にかかった時間: xx 時間", true))
 			test.github.SetGetPRInfoError("org/repo", 1, fmt.Errorf("API rate limit exceeded"))
 
@@ -298,7 +326,7 @@ func TestPRDurationService(t *testing.T) {
 		})
 
 		t.Run("PR更新エラー時はverbose設定に関わらずエラー情報をログに出力する", func(t *testing.T) {
-			test := setup(t, []string{"org/repo"}, false, false)
+			test := setup(t, []string{"org/repo"}, false, false, "")
 			test.github.AddPR(makePR("org/repo", 42, "実際にかかった時間: xx 時間", true))
 			test.github.SetUpdatePRBodyError("org/repo", 42, fmt.Errorf("permission denied"))
 
