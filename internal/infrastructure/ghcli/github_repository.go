@@ -46,12 +46,16 @@ type prGraphQLResponse struct {
 }
 
 // ListPRs は指定期間内に作成されたPR番号のリストを返す
-func (r *githubRepository) ListPRs(repo string, startDate, endDate time.Time) ([]int, error) {
-	cmd := exec.Command("gh", "pr", "list",
+func (r *githubRepository) ListPRs(repo string, startDate, endDate time.Time, author string) ([]int, error) {
+	args := []string{"pr", "list",
 		"--repo", repo,
 		"--state", "all",
 		"--limit", "1000",
-		"--json", "number,createdAt")
+		"--json", "number,createdAt"}
+	if author != "" {
+		args = append(args, "--author", author)
+	}
+	cmd := exec.Command("gh", args...)
 
 	output, err := cmd.Output()
 	if err != nil {

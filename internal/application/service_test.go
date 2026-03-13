@@ -38,6 +38,7 @@ func setup(t *testing.T, repos []string, dryRun bool, verbose bool) *ServiceTest
 		},
 		[]time.Time{},
 		[]string{"xx 時間", "XX 時間"},
+		"",
 		valueobjects.Options{
 			DryRun:  dryRun,
 			Verbose: verbose,

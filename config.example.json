@@ -1,4 +1,5 @@
 {
+  "author": "your-github-username",
   "repositories": {
     "targets": [
       "organization/repository1",

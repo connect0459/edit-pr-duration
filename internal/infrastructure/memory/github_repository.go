@@ -51,7 +51,7 @@ func (r *GitHubRepository) SetUpdatePRBodyError(repo string, number int, err err
 }
 
 // ListPRs は指定期間内に作成されたPR番号のリストを返す
-func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time) ([]int, error) {
+func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time, author string) ([]int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

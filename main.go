@@ -36,6 +36,7 @@ func main() {
 		config.WorkHours(),
 		config.Holidays(),
 		config.Placeholders(),
+		config.Author(),
 		valueobjects.Options{
 			DryRun:  *dryRun,
 			Verbose: *verbose,

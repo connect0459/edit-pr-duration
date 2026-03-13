@@ -14,6 +14,7 @@ type Config struct {
 	workHours    valueobjects.WorkHours
 	holidays     []time.Time
 	placeholders []string
+	author       string
 	options      valueobjects.Options
 }
 
@@ -24,6 +25,7 @@ func NewConfig(
 	workHours valueobjects.WorkHours,
 	holidays []time.Time,
 	placeholders []string,
+	author string,
 	options valueobjects.Options,
 ) *Config {
 	return &Config{
@@ -32,6 +34,7 @@ func NewConfig(
 		workHours:    workHours,
 		holidays:     holidays,
 		placeholders: placeholders,
+		author:       author,
 		options:      options,
 	}
 }
@@ -59,6 +62,11 @@ func (c *Config) Holidays() []time.Time {
 // Placeholders はプレースホルダーパターンリストを返す
 func (c *Config) Placeholders() []string {
 	return c.placeholders
+}
+
+// Author はPR作成者のGitHubユーザー名を返す（空文字は全ユーザーが対象）
+func (c *Config) Author() string {
+	return c.author
 }
 
 // Options は実行オプションを返す
