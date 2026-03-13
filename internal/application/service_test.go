@@ -65,6 +65,26 @@ func makePR(repo string, number int, body string, needsUpdate bool) *entities.PR
 		number,
 		"merged",
 		createdAt,
+		nil,
+		&mergedAt,
+		nil,
+		body,
+		5.0,
+		"5時間",
+		needsUpdate,
+	)
+}
+
+func makeDraftPR(repo string, number int, body string, needsUpdate bool) *entities.PRInfo {
+	createdAt := time.Date(2025, 10, 1, 9, 0, 0, 0, time.UTC)
+	readyForReviewAt := time.Date(2025, 10, 1, 10, 0, 0, 0, time.UTC)
+	mergedAt := time.Date(2025, 10, 1, 15, 0, 0, 0, time.UTC)
+	return entities.NewPRInfo(
+		repo,
+		number,
+		"merged",
+		createdAt,
+		&readyForReviewAt,
 		&mergedAt,
 		nil,
 		body,
@@ -107,6 +127,20 @@ func TestPRDurationService(t *testing.T) {
 			}
 			if result.NeedsUpdate != 0 {
 				t.Errorf("期待値: 0件更新対象, 実際: %d件", result.NeedsUpdate)
+			}
+		})
+
+		t.Run("Draft→ReadyになったPRはreadyForReviewAt基準で更新できる", func(t *testing.T) {
+			test := setup(t, []string{"org/repo"}, false, false)
+			test.github.AddPR(makeDraftPR("org/repo", 123, "実際にかかった時間: xx 時間", true))
+
+			result, err := test.service.Run()
+
+			if err != nil {
+				t.Fatalf("エラーが発生: %v", err)
+			}
+			if result.Updated != 1 {
+				t.Errorf("期待値: 1件更新, 実際: %d件", result.Updated)
 			}
 		})
 

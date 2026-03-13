@@ -190,7 +190,7 @@ func (s *PRDurationService) processPR(repo string, prNumber int) (summary *PRSum
 		return
 	}
 
-	workHours := s.calculator.CalculateWorkHours(prInfo.CreatedAt(), *endTime)
+	workHours := s.calculator.CalculateWorkHours(prInfo.StartAt(), *endTime)
 	workHoursFormatted := services.FormatHours(workHours)
 
 	updatedPRInfo := entities.NewPRInfo(
@@ -198,6 +198,7 @@ func (s *PRDurationService) processPR(repo string, prNumber int) (summary *PRSum
 		prInfo.Number(),
 		prInfo.State(),
 		prInfo.CreatedAt(),
+		prInfo.ReadyForReviewAt(),
 		prInfo.MergedAt(),
 		prInfo.ClosedAt(),
 		prInfo.Body(),

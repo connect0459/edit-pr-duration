@@ -13,6 +13,7 @@ type PRInfo struct {
 	number             int
 	state              string
 	createdAt          time.Time
+	readyForReviewAt   *time.Time
 	mergedAt           *time.Time
 	closedAt           *time.Time
 	body               string
@@ -27,6 +28,7 @@ func NewPRInfo(
 	number int,
 	state string,
 	createdAt time.Time,
+	readyForReviewAt *time.Time,
 	mergedAt *time.Time,
 	closedAt *time.Time,
 	body string,
@@ -39,6 +41,7 @@ func NewPRInfo(
 		number:             number,
 		state:              state,
 		createdAt:          createdAt,
+		readyForReviewAt:   readyForReviewAt,
 		mergedAt:           mergedAt,
 		closedAt:           closedAt,
 		body:               body,
@@ -65,6 +68,20 @@ func (p *PRInfo) State() string {
 
 // CreatedAt はPR作成日時を返す
 func (p *PRInfo) CreatedAt() time.Time {
+	return p.createdAt
+}
+
+// ReadyForReviewAt はDraftからReadyに変更された日時を返す
+func (p *PRInfo) ReadyForReviewAt() *time.Time {
+	return p.readyForReviewAt
+}
+
+// StartAt は作業時間計算の開始日時を返す
+// ReadyForReviewAtが設定されている場合はそちら、なければCreatedAtを使用する
+func (p *PRInfo) StartAt() time.Time {
+	if p.readyForReviewAt != nil {
+		return *p.readyForReviewAt
+	}
 	return p.createdAt
 }
 

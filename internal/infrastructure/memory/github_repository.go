@@ -119,6 +119,7 @@ func (r *GitHubRepository) UpdatePRBody(repo string, number int, body string) er
 		prInfo.Number(),
 		prInfo.State(),
 		prInfo.CreatedAt(),
+		prInfo.ReadyForReviewAt(),
 		prInfo.MergedAt(),
 		prInfo.ClosedAt(),
 		body,
