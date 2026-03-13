@@ -14,11 +14,12 @@ type GitHubRepository interface {
 	//   - repo: リポジトリ名（org/repo形式）
 	//   - startDate: 対象期間の開始日時
 	//   - endDate: 対象期間の終了日時
+	//   - author: PR作成者のGitHubユーザー名（空文字は全ユーザーが対象）
 	//
 	// 戻り値:
 	//   - PR番号のリスト
 	//   - エラー
-	ListPRs(repo string, startDate, endDate time.Time) ([]int, error)
+	ListPRs(repo string, startDate, endDate time.Time, author string) ([]int, error)
 
 	// GetPRInfo はPR詳細情報を取得する
 	//

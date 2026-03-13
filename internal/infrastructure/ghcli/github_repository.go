@@ -1,9 +1,11 @@
 package ghcli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/connect0459/edit-pr-duration/internal/domain/entities"
@@ -24,22 +26,39 @@ type PRListItem struct {
 	CreatedAt string `json:"createdAt"`
 }
 
-// PRViewResult はgh pr viewの結果を表す
-type PRViewResult struct {
-	Body      string `json:"body"`
-	CreatedAt string `json:"createdAt"`
-	MergedAt  string `json:"mergedAt"`
-	ClosedAt  string `json:"closedAt"`
-	State     string `json:"state"`
+type prGraphQLResponse struct {
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
+	Data struct {
+		Repository struct {
+			PullRequest struct {
+				Body          string  `json:"body"`
+				CreatedAt     string  `json:"createdAt"`
+				MergedAt      *string `json:"mergedAt"`
+				ClosedAt      *string `json:"closedAt"`
+				State         string  `json:"state"`
+				TimelineItems struct {
+					Nodes []struct {
+						CreatedAt string `json:"createdAt"`
+					} `json:"nodes"`
+				} `json:"timelineItems"`
+			} `json:"pullRequest"`
+		} `json:"repository"`
+	} `json:"data"`
 }
 
 // ListPRs は指定期間内に作成されたPR番号のリストを返す
-func (r *githubRepository) ListPRs(repo string, startDate, endDate time.Time) ([]int, error) {
-	cmd := exec.Command("gh", "pr", "list",
+func (r *githubRepository) ListPRs(repo string, startDate, endDate time.Time, author string) ([]int, error) {
+	args := []string{"pr", "list",
 		"--repo", repo,
 		"--state", "all",
 		"--limit", "1000",
-		"--json", "number,createdAt")
+		"--json", "number,createdAt"}
+	if author != "" {
+		args = append(args, "--author", author)
+	}
+	cmd := exec.Command("gh", args...)
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -70,58 +89,89 @@ func (r *githubRepository) ListPRs(repo string, startDate, endDate time.Time) ([
 
 // GetPRInfo はPR詳細情報を取得する
 func (r *githubRepository) GetPRInfo(repo string, number int, placeholders []string) (*entities.PRInfo, error) {
-	cmd := exec.Command("gh", "pr", "view", fmt.Sprintf("%d", number),
-		"--repo", repo,
-		"--json", "body,createdAt,mergedAt,closedAt,state")
+	parts := strings.SplitN(repo, "/", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid repo format: %s", repo)
+	}
+	owner, repoName := parts[0], parts[1]
+
+	const query = `query GetPR($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { body createdAt mergedAt closedAt state timelineItems(itemTypes: [READY_FOR_REVIEW_EVENT], first: 1) { nodes { ... on ReadyForReviewEvent { createdAt } } } } } }`
+
+	payload := map[string]any{
+		"query": query,
+		"variables": map[string]any{
+			"owner":  owner,
+			"name":   repoName,
+			"number": number,
+		},
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build GraphQL request: %w", err)
+	}
+
+	cmd := exec.Command("gh", "api", "graphql", "--input", "-")
+	cmd.Stdin = bytes.NewReader(payloadBytes)
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute gh pr view: %w", err)
+		return nil, fmt.Errorf("failed to execute gh api graphql: %w", err)
 	}
 
-	var result PRViewResult
+	var result prGraphQLResponse
 	if err := json.Unmarshal(output, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse PR info: %w", err)
 	}
+	if len(result.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", result.Errors[0].Message)
+	}
 
-	createdAt, err := services.UTCToJST(result.CreatedAt)
+	pr := result.Data.Repository.PullRequest
+
+	createdAt, err := services.UTCToJST(pr.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse createdAt: %w", err)
 	}
 
+	var readyForReviewAt *time.Time
+	if len(pr.TimelineItems.Nodes) > 0 && pr.TimelineItems.Nodes[0].CreatedAt != "" {
+		t, err := services.UTCToJST(pr.TimelineItems.Nodes[0].CreatedAt)
+		if err == nil {
+			readyForReviewAt = &t
+		}
+	}
+
 	var mergedAt *time.Time
-	if result.MergedAt != "" {
-		t, err := services.UTCToJST(result.MergedAt)
+	if pr.MergedAt != nil {
+		t, err := services.UTCToJST(*pr.MergedAt)
 		if err == nil {
 			mergedAt = &t
 		}
 	}
 
 	var closedAt *time.Time
-	if result.ClosedAt != "" {
-		t, err := services.UTCToJST(result.ClosedAt)
+	if pr.ClosedAt != nil {
+		t, err := services.UTCToJST(*pr.ClosedAt)
 		if err == nil {
 			closedAt = &t
 		}
 	}
 
-	// プレースホルダーの存在チェック
-	needsUpdate := entities.HasPlaceholder(result.Body, placeholders)
+	needsUpdate := entities.HasPlaceholder(pr.Body, placeholders)
 
-	prInfo := entities.NewPRInfo(
+	return entities.NewPRInfo(
 		repo,
 		number,
-		result.State,
+		pr.State,
 		createdAt,
+		readyForReviewAt,
 		mergedAt,
 		closedAt,
-		result.Body,
+		pr.Body,
 		0.0,
 		"",
 		needsUpdate,
-	)
-
-	return prInfo, nil
+	), nil
 }
 
 // UpdatePRBody はPRのbodyを更新する

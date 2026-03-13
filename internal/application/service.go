@@ -118,7 +118,7 @@ func (s *PRDurationService) Run() (*RunResult, error) {
 // processRepo は単一リポジトリの全PRを処理する
 func (s *PRDurationService) processRepo(repo string) (RepoResult, error) {
 	period := s.config.Period()
-	prNumbers, err := s.github.ListPRs(repo, period.StartDate, period.EndDate)
+	prNumbers, err := s.github.ListPRs(repo, period.StartDate, period.EndDate, s.config.Author())
 	if err != nil {
 		return RepoResult{}, fmt.Errorf("failed to list PRs for %s: %w", repo, err)
 	}
@@ -190,7 +190,7 @@ func (s *PRDurationService) processPR(repo string, prNumber int) (summary *PRSum
 		return
 	}
 
-	workHours := s.calculator.CalculateWorkHours(prInfo.CreatedAt(), *endTime)
+	workHours := s.calculator.CalculateWorkHours(prInfo.StartAt(), *endTime)
 	workHoursFormatted := services.FormatHours(workHours)
 
 	updatedPRInfo := entities.NewPRInfo(
@@ -198,6 +198,7 @@ func (s *PRDurationService) processPR(repo string, prNumber int) (summary *PRSum
 		prInfo.Number(),
 		prInfo.State(),
 		prInfo.CreatedAt(),
+		prInfo.ReadyForReviewAt(),
 		prInfo.MergedAt(),
 		prInfo.ClosedAt(),
 		prInfo.Body(),

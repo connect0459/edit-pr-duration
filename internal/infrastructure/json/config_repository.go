@@ -39,6 +39,7 @@ type configJSON struct {
 	Placeholders struct {
 		Patterns []string `json:"patterns"`
 	} `json:"placeholders"`
+	Author string `json:"author"`
 }
 
 // Load は指定されたパスからJSON設定を読み込む
@@ -107,6 +108,7 @@ func (r *configRepository) Load(path string) (*entities.Config, error) {
 		},
 		holidays,
 		cfg.Placeholders.Patterns,
+		cfg.Author,
 		valueobjects.Options{},
 	)
 

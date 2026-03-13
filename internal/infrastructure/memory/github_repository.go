@@ -12,6 +12,7 @@ import (
 type GitHubRepository struct {
 	mu             sync.RWMutex
 	prs            map[string]map[int]*entities.PRInfo // repo -> number -> PRInfo
+	authors        map[string]map[int]string           // repo -> number -> author
 	getPRInfoErrs  map[string]error                    // "repo#number" -> error
 	updateBodyErrs map[string]error                    // "repo#number" -> error
 }
@@ -20,6 +21,7 @@ type GitHubRepository struct {
 func NewGitHubRepository() *GitHubRepository {
 	return &GitHubRepository{
 		prs:            make(map[string]map[int]*entities.PRInfo),
+		authors:        make(map[string]map[int]string),
 		getPRInfoErrs:  make(map[string]error),
 		updateBodyErrs: make(map[string]error),
 	}
@@ -34,6 +36,17 @@ func (r *GitHubRepository) AddPR(prInfo *entities.PRInfo) {
 		r.prs[prInfo.Repo()] = make(map[int]*entities.PRInfo)
 	}
 	r.prs[prInfo.Repo()][prInfo.Number()] = prInfo
+}
+
+// SetPRAuthor はテスト用にPRの作成者を設定する
+func (r *GitHubRepository) SetPRAuthor(repo string, number int, author string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.authors[repo] == nil {
+		r.authors[repo] = make(map[int]string)
+	}
+	r.authors[repo][number] = author
 }
 
 // SetGetPRInfoError は指定PRのGetPRInfo呼び出しでエラーを返すよう設定する
@@ -51,7 +64,8 @@ func (r *GitHubRepository) SetUpdatePRBodyError(repo string, number int, err err
 }
 
 // ListPRs は指定期間内に作成されたPR番号のリストを返す
-func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time) ([]int, error) {
+// author が空文字の場合は全ユーザーのPRを対象とする
+func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time, author string) ([]int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -64,6 +78,15 @@ func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time) ([
 	for number, prInfo := range repoPRs {
 		if (prInfo.CreatedAt().Equal(startDate) || prInfo.CreatedAt().After(startDate)) &&
 			(prInfo.CreatedAt().Equal(endDate) || prInfo.CreatedAt().Before(endDate)) {
+			if author != "" {
+				prAuthor := ""
+				if r.authors[repo] != nil {
+					prAuthor = r.authors[repo][number]
+				}
+				if prAuthor != author {
+					continue
+				}
+			}
 			prNumbers = append(prNumbers, number)
 		}
 	}
@@ -119,6 +142,7 @@ func (r *GitHubRepository) UpdatePRBody(repo string, number int, body string) er
 		prInfo.Number(),
 		prInfo.State(),
 		prInfo.CreatedAt(),
+		prInfo.ReadyForReviewAt(),
 		prInfo.MergedAt(),
 		prInfo.ClosedAt(),
 		body,
