@@ -27,6 +27,9 @@ type PRListItem struct {
 }
 
 type prGraphQLResponse struct {
+	Errors []struct {
+		Message string `json:"message"`
+	} `json:"errors"`
 	Data struct {
 		Repository struct {
 			PullRequest struct {
@@ -118,6 +121,9 @@ func (r *githubRepository) GetPRInfo(repo string, number int, placeholders []str
 	var result prGraphQLResponse
 	if err := json.Unmarshal(output, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse PR info: %w", err)
+	}
+	if len(result.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", result.Errors[0].Message)
 	}
 
 	pr := result.Data.Repository.PullRequest
