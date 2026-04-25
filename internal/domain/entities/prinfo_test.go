@@ -11,17 +11,54 @@ func testTime() time.Time {
 	return time.Date(2025, 10, 1, 10, 0, 0, 0, time.UTC)
 }
 
+func TestNewReplacementPattern(t *testing.T) {
+	t.Run("有効なパターンでReplacementPatternを作成できる", func(t *testing.T) {
+		rp, err := entities.NewReplacementPattern(
+			`(実際にかかった時間\s*)xx\s*時間`,
+			"${1}{hours}",
+			"ja",
+		)
+		if err != nil {
+			t.Fatalf("エラーが発生: %v", err)
+		}
+		if rp.CompiledPattern == nil {
+			t.Error("CompiledPatternがnilです")
+		}
+	})
+
+	t.Run("無効な正規表現の場合エラーを返す", func(t *testing.T) {
+		_, err := entities.NewReplacementPattern(`[invalid`, "${1}{hours}", "ja")
+		if err == nil {
+			t.Error("エラーが返されませんでした")
+		}
+	})
+
+	t.Run("patternが空の場合エラーを返す", func(t *testing.T) {
+		_, err := entities.NewReplacementPattern("", "${1}{hours}", "ja")
+		if err == nil {
+			t.Error("エラーが返されませんでした")
+		}
+	})
+
+	t.Run("hours_formatがja/en以外の場合エラーを返す", func(t *testing.T) {
+		_, err := entities.NewReplacementPattern(`test`, "${1}{hours}", "zh")
+		if err == nil {
+			t.Error("エラーが返されませんでした")
+		}
+	})
+}
+
 func TestPRInfo(t *testing.T) {
-	jaPattern := entities.ReplacementPattern{
-		Pattern:     `(実際にかかった時間\s*[:：]?\s*\r?\n?\s*[-*]?\s*)(?:約?\s*)?(?:XX|xx)\s*時間`,
-		Replacement: "${1}{hours}",
-		HoursFormat: "ja",
-	}
-	enPattern := entities.ReplacementPattern{
-		Pattern:     `(Actual time spent\s*\r?\n\s+[-*]\s*)(?:about\s*)?(?:XX|xx)\s*hours`,
-		Replacement: "${1}{hours}",
-		HoursFormat: "en",
-	}
+	jaPattern, _ := entities.NewReplacementPattern(
+		`(実際にかかった時間\s*[:：]?\s*\r?\n?\s*[-*]?\s*)(?:約?\s*)?(?:XX|xx)\s*時間`,
+		"${1}{hours}",
+		"ja",
+	)
+	enPattern, _ := entities.NewReplacementPattern(
+		`(Actual time spent\s*\r?\n\s+[-*]\s*)(?:about\s*)?(?:XX|xx)\s*hours`,
+		"${1}{hours}",
+		"en",
+	)
 
 	t.Run("UpdatedBody", func(t *testing.T) {
 		t.Run("日本語パターンでプレースホルダーを置き換えられる", func(t *testing.T) {

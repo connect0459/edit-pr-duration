@@ -1,6 +1,8 @@
 package entities
 
 import (
+	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/connect0459/edit-pr-duration/internal/domain/valueobjects"
@@ -10,10 +12,33 @@ import (
 // Pattern: マッチする正規表現（キャプチャグループ1が前置詞部分）
 // Replacement: 置換テンプレート（{hours} が整形された時間文字列に展開される）
 // HoursFormat: 時間フォーマット（"ja" or "en"）
+// CompiledPattern: コンパイル済み正規表現（NewReplacementPatternで設定される）
 type ReplacementPattern struct {
-	Pattern     string
-	Replacement string
-	HoursFormat string
+	Pattern         string
+	Replacement     string
+	HoursFormat     string
+	CompiledPattern *regexp.Regexp
+}
+
+// NewReplacementPattern は正規表現をコンパイルしてReplacementPatternを作成する
+// pattern が空・不正、hoursFormat が "ja"/"en" 以外の場合はエラーを返す
+func NewReplacementPattern(pattern, replacement, hoursFormat string) (ReplacementPattern, error) {
+	if pattern == "" {
+		return ReplacementPattern{}, fmt.Errorf("pattern must not be empty")
+	}
+	if hoursFormat != "ja" && hoursFormat != "en" {
+		return ReplacementPattern{}, fmt.Errorf("unsupported hours_format %q, must be \"ja\" or \"en\"", hoursFormat)
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return ReplacementPattern{}, fmt.Errorf("invalid pattern %q: %w", pattern, err)
+	}
+	return ReplacementPattern{
+		Pattern:         pattern,
+		Replacement:     replacement,
+		HoursFormat:     hoursFormat,
+		CompiledPattern: re,
+	}, nil
 }
 
 // Config はアプリケーション設定全体を表すエンティティ

@@ -98,14 +98,14 @@ func (r *configRepository) Load(path string) (*entities.Config, error) {
 		}
 	}
 
-	// replacement_patterns をエンティティ型に変換
+	// replacement_patterns をコンパイル済みエンティティ型に変換（バリデーション含む）
 	replacementPatterns := make([]entities.ReplacementPattern, len(cfg.ReplacementPatterns))
 	for i, rp := range cfg.ReplacementPatterns {
-		replacementPatterns[i] = entities.ReplacementPattern{
-			Pattern:     rp.Pattern,
-			Replacement: rp.Replacement,
-			HoursFormat: rp.HoursFormat,
+		compiled, err := entities.NewReplacementPattern(rp.Pattern, rp.Replacement, rp.HoursFormat)
+		if err != nil {
+			return nil, fmt.Errorf("replacement_patterns[%d]: %w", i, err)
 		}
+		replacementPatterns[i] = compiled
 	}
 
 	// entities.Configを作成

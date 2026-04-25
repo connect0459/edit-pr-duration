@@ -3,7 +3,6 @@ package entities
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -125,8 +124,7 @@ func (p *PRInfo) UpdatedBody(patterns []ReplacementPattern) string {
 	}
 
 	for _, pat := range patterns {
-		re, err := regexp.Compile(pat.Pattern)
-		if err != nil {
+		if pat.CompiledPattern == nil {
 			continue
 		}
 
@@ -138,7 +136,7 @@ func (p *PRInfo) UpdatedBody(patterns []ReplacementPattern) string {
 		}
 
 		replacement := strings.ReplaceAll(pat.Replacement, "{hours}", hoursStr)
-		newBody := re.ReplaceAllString(p.body, replacement)
+		newBody := pat.CompiledPattern.ReplaceAllString(p.body, replacement)
 		if newBody != p.body {
 			return newBody
 		}

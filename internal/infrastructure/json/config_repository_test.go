@@ -155,6 +155,60 @@ func TestConfigRepository(t *testing.T) {
 			}
 		})
 
+		t.Run("replacement_patternsに無効な正規表現がある場合エラーを返す", func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "config.json")
+
+			configJSON := `{
+				"repositories": {"targets": ["org/repo1"]},
+				"period": {"start_date": "2025-10-01T00:00:00Z", "end_date": "2025-12-31T23:59:59Z"},
+				"work_hours": {"start_hour": 9, "start_minute": 0, "end_hour": 18, "end_minute": 0},
+				"holidays": [{"dates": []}],
+				"placeholders": {"patterns": ["xx 時間"]},
+				"replacement_patterns": [
+					{"pattern": "[invalid", "replacement": "${1}{hours}", "hours_format": "ja"}
+				]
+			}`
+
+			if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
+				t.Fatalf("一時ファイルの作成に失敗: %v", err)
+			}
+
+			repo := json.NewConfigRepository()
+			_, err := repo.Load(configPath)
+
+			if err == nil {
+				t.Error("エラーが返されませんでした")
+			}
+		})
+
+		t.Run("replacement_patternsにサポート外のhours_formatがある場合エラーを返す", func(t *testing.T) {
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "config.json")
+
+			configJSON := `{
+				"repositories": {"targets": ["org/repo1"]},
+				"period": {"start_date": "2025-10-01T00:00:00Z", "end_date": "2025-12-31T23:59:59Z"},
+				"work_hours": {"start_hour": 9, "start_minute": 0, "end_hour": 18, "end_minute": 0},
+				"holidays": [{"dates": []}],
+				"placeholders": {"patterns": ["xx 時間"]},
+				"replacement_patterns": [
+					{"pattern": "xx\\s*時間", "replacement": "${1}{hours}", "hours_format": "zh"}
+				]
+			}`
+
+			if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
+				t.Fatalf("一時ファイルの作成に失敗: %v", err)
+			}
+
+			repo := json.NewConfigRepository()
+			_, err := repo.Load(configPath)
+
+			if err == nil {
+				t.Error("エラーが返されませんでした")
+			}
+		})
+
 		t.Run("ファイルが存在しない場合はエラーを返す", func(t *testing.T) {
 			repo := json.NewConfigRepository()
 			_, err := repo.Load("/nonexistent/config.json")
