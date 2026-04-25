@@ -37,7 +37,7 @@ func setup(t *testing.T, repos []string, dryRun bool, verbose bool, author strin
 			EndMinute:   30,
 		},
 		[]time.Time{},
-		[]string{"xx 時間", "XX 時間", "xx hours"},
+		[]string{"xx 時間", "XX 時間", "xx hours", "XX hours"},
 		[]entities.ReplacementPattern{
 			{
 				Pattern:     `(実際にかかった時間\s*[:：]?\s*\r?\n?\s*[-*]?\s*)(?:約?\s*)?(?:XX|xx)\s*時間`,
