@@ -207,7 +207,7 @@ func (s *PRDurationService) processPR(repo string, prNumber int) (summary *PRSum
 		prInfo.NeedsUpdate(),
 	)
 
-	newBody := updatedPRInfo.UpdatedBody()
+	newBody := updatedPRInfo.UpdatedBody(s.config.ReplacementPatterns())
 	if newBody == prInfo.Body() {
 		return
 	}

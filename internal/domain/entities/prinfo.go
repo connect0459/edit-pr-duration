@@ -1,7 +1,8 @@
 package entities
 
 import (
-	"regexp"
+	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -116,18 +117,62 @@ func (p *PRInfo) NeedsUpdate() bool {
 }
 
 // UpdatedBody はプレースホルダーを実際の作業時間で置き換えたbodyを返す
-func (p *PRInfo) UpdatedBody() string {
+// patterns を順に試し、最初に一致したパターンで置換して返す
+func (p *PRInfo) UpdatedBody(patterns []ReplacementPattern) string {
 	if !p.needsUpdate || p.workHoursFormatted == "" {
 		return p.body
 	}
 
-	// 様々なパターンに対応した正規表現
-	// 「実際にかかった時間」の後に、コロンや改行、箇条書き記号を経て、プレースホルダーが続くパターン
-	pattern := `(実際にかかった時間\s*[:：]?\s*\r?\n?\s*[-*]?\s*)(?:約?\s*)?(?:XX|xx)\s*時間`
-	re := regexp.MustCompile(pattern)
+	for _, pat := range patterns {
+		if pat.CompiledPattern == nil {
+			continue
+		}
 
-	newBody := re.ReplaceAllString(p.body, "${1}"+p.workHoursFormatted)
-	return newBody
+		var hoursStr string
+		if pat.HoursFormat == "en" {
+			hoursStr = formatHoursEN(p.workHours)
+		} else {
+			hoursStr = p.workHoursFormatted
+		}
+
+		replacement := strings.ReplaceAll(pat.Replacement, "{hours}", hoursStr)
+		newBody := pat.CompiledPattern.ReplaceAllString(p.body, replacement)
+		if newBody != p.body {
+			return newBody
+		}
+	}
+
+	return p.body
+}
+
+func formatHoursEN(hours float64) string {
+	if hours == 0 {
+		return "0 minutes"
+	}
+
+	totalMinutes := int(math.Round(hours * 60))
+	h := totalMinutes / 60
+	m := totalMinutes % 60
+
+	hourWord := func(n int) string {
+		if n == 1 {
+			return "1 hour"
+		}
+		return fmt.Sprintf("%d hours", n)
+	}
+	minuteWord := func(n int) string {
+		if n == 1 {
+			return "1 minute"
+		}
+		return fmt.Sprintf("%d minutes", n)
+	}
+
+	if h > 0 && m > 0 {
+		return hourWord(h) + " " + minuteWord(m)
+	} else if h > 0 {
+		return hourWord(h)
+	}
+	return minuteWord(m)
 }
 
 // HasPlaceholder はbodyにプレースホルダーが含まれているかチェックする

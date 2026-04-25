@@ -37,7 +37,11 @@ func setup(t *testing.T, repos []string, dryRun bool, verbose bool, author strin
 			EndMinute:   30,
 		},
 		[]time.Time{},
-		[]string{"xx 時間", "XX 時間"},
+		[]string{"xx 時間", "XX 時間", "xx hours", "XX hours"},
+		mustPatterns(t,
+			[3]string{`(実際にかかった時間\s*[:：]?\s*\r?\n?\s*[-*]?\s*)(?:約?\s*)?(?:XX|xx)\s*時間`, "${1}{hours}", "ja"},
+			[3]string{`(Actual time spent\s*\r?\n\s+[-*]\s*)(?:about\s*)?(?:XX|xx)\s*hours`, "${1}{hours}", "en"},
+		),
 		author,
 		valueobjects.Options{
 			DryRun:  dryRun,
@@ -56,6 +60,19 @@ func setup(t *testing.T, repos []string, dryRun bool, verbose bool, author strin
 		service: service,
 		output:  &buf,
 	}
+}
+
+func mustPatterns(t *testing.T, defs ...[3]string) []entities.ReplacementPattern {
+	t.Helper()
+	patterns := make([]entities.ReplacementPattern, len(defs))
+	for i, d := range defs {
+		rp, err := entities.NewReplacementPattern(d[0], d[1], d[2])
+		if err != nil {
+			t.Fatalf("パターン作成に失敗: %v", err)
+		}
+		patterns[i] = rp
+	}
+	return patterns
 }
 
 func makePR(repo string, number int, body string, needsUpdate bool) *entities.PRInfo {
@@ -111,6 +128,21 @@ func TestPRDurationService(t *testing.T) {
 			}
 			if result.TotalPRs != 1 {
 				t.Errorf("期待値: 1件処理, 実際: %d件", result.TotalPRs)
+			}
+		})
+
+		t.Run("英語パターンのプレースホルダーを含むPRを更新できる", func(t *testing.T) {
+			test := setup(t, []string{"org/repo"}, false, false, "")
+			body := "- Actual time spent\n  - xx hours"
+			test.github.AddPR(makePR("org/repo", 123, body, true))
+
+			result, err := test.service.Run()
+
+			if err != nil {
+				t.Fatalf("エラーが発生: %v", err)
+			}
+			if result.Updated != 1 {
+				t.Errorf("期待値: 1件更新, 実際: %d件", result.Updated)
 			}
 		})
 
