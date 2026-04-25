@@ -32,7 +32,8 @@
       "xx時間",
       "約xx時間",
       "XX時間",
-      "xx hours"
+      "xx hours",
+      "XX hours"
     ]
   },
   "replacement_patterns": [
