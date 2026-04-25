@@ -31,7 +31,20 @@
       "xx 時間",
       "xx時間",
       "約xx時間",
-      "XX時間"
+      "XX時間",
+      "xx hours"
     ]
-  }
+  },
+  "replacement_patterns": [
+    {
+      "pattern": "(実際にかかった時間\\s*[:：]?\\s*\\r?\\n?\\s*[-*]?\\s*)(?:約?\\s*)?(?:XX|xx)\\s*時間",
+      "replacement": "${1}{hours}",
+      "hours_format": "ja"
+    },
+    {
+      "pattern": "(Actual time spent\\s*\\r?\\n\\s+[-*]\\s*)(?:about\\s*)?(?:XX|xx)\\s*hours",
+      "replacement": "${1}{hours}",
+      "hours_format": "en"
+    }
+  ]
 }

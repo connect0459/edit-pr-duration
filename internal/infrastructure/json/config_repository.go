@@ -39,6 +39,11 @@ type configJSON struct {
 	Placeholders struct {
 		Patterns []string `json:"patterns"`
 	} `json:"placeholders"`
+	ReplacementPatterns []struct {
+		Pattern     string `json:"pattern"`
+		Replacement string `json:"replacement"`
+		HoursFormat string `json:"hours_format"`
+	} `json:"replacement_patterns"`
 	Author string `json:"author"`
 }
 
@@ -93,6 +98,16 @@ func (r *configRepository) Load(path string) (*entities.Config, error) {
 		}
 	}
 
+	// replacement_patterns をエンティティ型に変換
+	replacementPatterns := make([]entities.ReplacementPattern, len(cfg.ReplacementPatterns))
+	for i, rp := range cfg.ReplacementPatterns {
+		replacementPatterns[i] = entities.ReplacementPattern{
+			Pattern:     rp.Pattern,
+			Replacement: rp.Replacement,
+			HoursFormat: rp.HoursFormat,
+		}
+	}
+
 	// entities.Configを作成
 	config := entities.NewConfig(
 		cfg.Repositories.Targets,
@@ -108,6 +123,7 @@ func (r *configRepository) Load(path string) (*entities.Config, error) {
 		},
 		holidays,
 		cfg.Placeholders.Patterns,
+		replacementPatterns,
 		cfg.Author,
 		valueobjects.Options{},
 	)
