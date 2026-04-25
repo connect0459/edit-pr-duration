@@ -61,6 +61,20 @@ func TestPRInfo(t *testing.T) {
 			}
 		})
 
+		t.Run("英語パターンでfloat誤差があっても正しい分数に丸める", func(t *testing.T) {
+			body := "- Actual time spent\n  - xx hours"
+			// 0.33 * 60 = 19.8 → 切り捨てだと19分、丸めだと20分
+			pr := entities.NewPRInfo("org/repo", 1, "merged", testTime(), nil, nil, nil,
+				body, 0.33, "20分", true)
+
+			got := pr.UpdatedBody([]entities.ReplacementPattern{enPattern})
+
+			want := "- Actual time spent\n  - 20 minutes"
+			if got != want {
+				t.Errorf("期待値: %q, 実際: %q", want, got)
+			}
+		})
+
 		t.Run("複数パターンを順に試し最初に一致したもので置き換える", func(t *testing.T) {
 			body := "- Actual time spent\n  - xx hours"
 			pr := entities.NewPRInfo("org/repo", 1, "merged", testTime(), nil, nil, nil,

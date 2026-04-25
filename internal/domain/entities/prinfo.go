@@ -2,6 +2,7 @@ package entities
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -151,7 +152,7 @@ func formatHoursEN(hours float64) string {
 		return "0 minutes"
 	}
 
-	totalMinutes := int(hours * 60)
+	totalMinutes := int(math.Round(hours * 60))
 	h := totalMinutes / 60
 	m := totalMinutes % 60
 
