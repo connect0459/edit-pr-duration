@@ -175,14 +175,14 @@ func formatHoursEN(hours float64) string {
 	return minuteWord(m)
 }
 
-// HasPlaceholder はbodyにプレースホルダーが含まれているかチェックする
-func HasPlaceholder(body string, patterns []string) bool {
+// NeedsReplacement はbodyがpatternsのいずれかに一致し、置換対象を含むかチェックする
+func NeedsReplacement(body string, patterns []ReplacementPattern) bool {
 	if body == "" {
 		return false
 	}
 
-	for _, pattern := range patterns {
-		if strings.Contains(body, pattern) {
+	for _, pat := range patterns {
+		if pat.CompiledPattern != nil && pat.CompiledPattern.MatchString(body) {
 			return true
 		}
 	}

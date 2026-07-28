@@ -26,16 +26,6 @@
       ]
     }
   ],
-  "placeholders": {
-    "patterns": [
-      "xx 時間",
-      "xx時間",
-      "約xx時間",
-      "XX時間",
-      "xx hours",
-      "XX hours"
-    ]
-  },
   "replacement_patterns": [
     {
       "pattern": "(実際にかかった時間\\s*[:：]?\\s*\\r?\\n?\\s*[-*]?\\s*)(?:約?\\s*)?(?:XX|xx)\\s*時間",

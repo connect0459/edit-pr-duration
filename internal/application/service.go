@@ -168,7 +168,7 @@ func (s *PRDurationService) processRepo(repo string) (RepoResult, error) {
 func (s *PRDurationService) processPR(repo string, prNumber int) (summary *PRSummary, total, needs, updated, failed int) {
 	total = 1
 
-	prInfo, err := s.github.GetPRInfo(repo, prNumber, s.config.Placeholders())
+	prInfo, err := s.github.GetPRInfo(repo, prNumber, s.config.ReplacementPatterns())
 	if err != nil {
 		fmt.Fprintf(s.output, "[ERROR] %s#%d: PR取得に失敗: %v\n", repo, prNumber, err)
 		failed++

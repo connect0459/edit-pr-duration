@@ -158,4 +158,43 @@ func TestPRInfo(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("NeedsReplacement", func(t *testing.T) {
+		t.Run("実際にかかった時間がプレースホルダーのままの場合はtrueを返す", func(t *testing.T) {
+			body := "- 実際にかかった時間\n  - xx 時間"
+
+			got := entities.NeedsReplacement(body, []entities.ReplacementPattern{jaPattern})
+
+			if !got {
+				t.Error("期待値: true, 実際: false")
+			}
+		})
+
+		t.Run("見積りだけがプレースホルダーで実際にかかった時間が実値の場合はfalseを返す", func(t *testing.T) {
+			// 回帰テスト: 見積り欄のxx時間だけが残っているPRを誤って更新対象と判定しないこと
+			body := "- 見積り\n  - xx 時間\n- 実際にかかった時間\n  - 5時間27分"
+
+			got := entities.NeedsReplacement(body, []entities.ReplacementPattern{jaPattern})
+
+			if got {
+				t.Error("期待値: false, 実際: true")
+			}
+		})
+
+		t.Run("いずれのパターンにも一致しない場合はfalseを返す", func(t *testing.T) {
+			got := entities.NeedsReplacement("no placeholder here", []entities.ReplacementPattern{jaPattern, enPattern})
+
+			if got {
+				t.Error("期待値: false, 実際: true")
+			}
+		})
+
+		t.Run("パターンリストが空の場合はfalseを返す", func(t *testing.T) {
+			got := entities.NeedsReplacement("実際にかかった時間: xx 時間", []entities.ReplacementPattern{})
+
+			if got {
+				t.Error("期待値: false, 実際: true")
+			}
+		})
+	})
 }

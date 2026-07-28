@@ -36,9 +36,6 @@ type configJSON struct {
 	Holidays []struct {
 		Dates []string `json:"dates"`
 	} `json:"holidays"`
-	Placeholders struct {
-		Patterns []string `json:"patterns"`
-	} `json:"placeholders"`
 	ReplacementPatterns []struct {
 		Pattern     string `json:"pattern"`
 		Replacement string `json:"replacement"`
@@ -71,8 +68,8 @@ func (r *configRepository) Load(path string) (*entities.Config, error) {
 	if cfg.Period.EndDate == "" {
 		return nil, fmt.Errorf("period.end_date is required")
 	}
-	if len(cfg.Placeholders.Patterns) == 0 {
-		return nil, fmt.Errorf("placeholders.patterns is required")
+	if len(cfg.ReplacementPatterns) == 0 {
+		return nil, fmt.Errorf("replacement_patterns is required")
 	}
 
 	// 期間のパース
@@ -122,7 +119,6 @@ func (r *configRepository) Load(path string) (*entities.Config, error) {
 			EndMinute:   cfg.WorkHours.EndMinute,
 		},
 		holidays,
-		cfg.Placeholders.Patterns,
 		replacementPatterns,
 		cfg.Author,
 		valueobjects.Options{},
