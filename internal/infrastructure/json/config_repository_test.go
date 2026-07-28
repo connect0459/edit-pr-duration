@@ -118,9 +118,6 @@ func TestConfigRepository(t *testing.T) {
 					"end_minute": 0
 				},
 				"holidays": [{"dates": []}],
-				"placeholders": {
-					"patterns": ["xx 時間"]
-				},
 				"replacement_patterns": [
 					{
 						"pattern": "(実際にかかった時間\\s*[:：]?\\s*\\r?\\n?\\s*[-*]?\\s*)(?:約?\\s*)?(?:XX|xx)\\s*時間",
