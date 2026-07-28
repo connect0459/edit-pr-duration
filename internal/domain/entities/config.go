@@ -48,7 +48,6 @@ type Config struct {
 	period              valueobjects.Period
 	workHours           valueobjects.WorkHours
 	holidays            []time.Time
-	placeholders        []string
 	replacementPatterns []ReplacementPattern
 	author              string
 	options             valueobjects.Options
@@ -60,7 +59,6 @@ func NewConfig(
 	period valueobjects.Period,
 	workHours valueobjects.WorkHours,
 	holidays []time.Time,
-	placeholders []string,
 	replacementPatterns []ReplacementPattern,
 	author string,
 	options valueobjects.Options,
@@ -70,7 +68,6 @@ func NewConfig(
 		period:              period,
 		workHours:           workHours,
 		holidays:            holidays,
-		placeholders:        placeholders,
 		replacementPatterns: replacementPatterns,
 		author:              author,
 		options:             options,
@@ -95,11 +92,6 @@ func (c *Config) WorkHours() valueobjects.WorkHours {
 // Holidays は祝日リストを返す
 func (c *Config) Holidays() []time.Time {
 	return c.holidays
-}
-
-// Placeholders はプレースホルダーパターンリストを返す
-func (c *Config) Placeholders() []string {
-	return c.placeholders
 }
 
 // ReplacementPatterns はプレースホルダー置換パターンリストを返す

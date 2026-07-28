@@ -62,7 +62,8 @@ edit-pr-durationプロジェクトの設計において、アプリケーショ�
        config.Period(),
        config.WorkHours(),
        config.Holidays(),
-       config.Placeholders(),
+       config.ReplacementPatterns(),
+       config.Author(),
        valueobjects.Options{DryRun: true, ...},
    )
    ```

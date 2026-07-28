@@ -37,7 +37,6 @@ func setup(t *testing.T, repos []string, dryRun bool, verbose bool, author strin
 			EndMinute:   30,
 		},
 		[]time.Time{},
-		[]string{"xx 時間", "XX 時間", "xx hours", "XX hours"},
 		mustPatterns(t,
 			[3]string{`(実際にかかった時間\s*[:：]?\s*\r?\n?\s*[-*]?\s*)(?:約?\s*)?(?:XX|xx)\s*時間`, "${1}{hours}", "ja"},
 			[3]string{`(Actual time spent\s*\r?\n\s+[-*]\s*)(?:about\s*)?(?:XX|xx)\s*hours`, "${1}{hours}", "en"},

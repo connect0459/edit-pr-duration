@@ -35,9 +35,13 @@ func TestConfigRepository(t *testing.T) {
 						"dates": ["2025-10-14", "2025-11-04"]
 					}
 				],
-				"placeholders": {
-					"patterns": ["xx 時間", "XX 時間"]
-				}
+				"replacement_patterns": [
+					{
+						"pattern": "xx\\s*時間",
+						"replacement": "{hours}",
+						"hours_format": "ja"
+					}
+				]
 			}`
 
 			err := os.WriteFile(configPath, []byte(configJSON), 0644)
@@ -88,12 +92,11 @@ func TestConfigRepository(t *testing.T) {
 				t.Errorf("期待値: 2祝日, 実際: %d", len(holidays))
 			}
 
-			// プレースホルダー検証
-			placeholders := config.Placeholders()
-			if len(placeholders) != 2 {
-				t.Errorf("期待値: 2パターン, 実際: %d", len(placeholders))
+			// 置換パターン検証
+			patterns := config.ReplacementPatterns()
+			if len(patterns) != 1 {
+				t.Errorf("期待値: 1パターン, 実際: %d", len(patterns))
 			}
-
 		})
 
 		t.Run("replacement_patternsを含むJSON設定ファイルを読み込める", func(t *testing.T) {
@@ -115,9 +118,6 @@ func TestConfigRepository(t *testing.T) {
 					"end_minute": 0
 				},
 				"holidays": [{"dates": []}],
-				"placeholders": {
-					"patterns": ["xx 時間"]
-				},
 				"replacement_patterns": [
 					{
 						"pattern": "(実際にかかった時間\\s*[:：]?\\s*\\r?\\n?\\s*[-*]?\\s*)(?:約?\\s*)?(?:XX|xx)\\s*時間",
@@ -164,7 +164,6 @@ func TestConfigRepository(t *testing.T) {
 				"period": {"start_date": "2025-10-01T00:00:00Z", "end_date": "2025-12-31T23:59:59Z"},
 				"work_hours": {"start_hour": 9, "start_minute": 0, "end_hour": 18, "end_minute": 0},
 				"holidays": [{"dates": []}],
-				"placeholders": {"patterns": ["xx 時間"]},
 				"replacement_patterns": [
 					{"pattern": "[invalid", "replacement": "${1}{hours}", "hours_format": "ja"}
 				]
@@ -191,7 +190,6 @@ func TestConfigRepository(t *testing.T) {
 				"period": {"start_date": "2025-10-01T00:00:00Z", "end_date": "2025-12-31T23:59:59Z"},
 				"work_hours": {"start_hour": 9, "start_minute": 0, "end_hour": 18, "end_minute": 0},
 				"holidays": [{"dates": []}],
-				"placeholders": {"patterns": ["xx 時間"]},
 				"replacement_patterns": [
 					{"pattern": "xx\\s*時間", "replacement": "${1}{hours}", "hours_format": "zh"}
 				]
@@ -262,6 +260,30 @@ func TestConfigRepository(t *testing.T) {
 			// テスト実行
 			repo := json.NewConfigRepository()
 			_, err = repo.Load(configPath)
+
+			if err == nil {
+				t.Error("エラーが返されませんでした")
+			}
+		})
+
+		t.Run("replacement_patternsが空の場合はエラーを返す", func(t *testing.T) {
+			// 回帰テスト: replacement_patternsが未設定だと更新が常に0件になる不具合の再発防止
+			tmpDir := t.TempDir()
+			configPath := filepath.Join(tmpDir, "no-replacement-patterns.json")
+
+			configJSON := `{
+				"repositories": {"targets": ["org/repo1"]},
+				"period": {"start_date": "2025-10-01T00:00:00Z", "end_date": "2025-12-31T23:59:59Z"},
+				"work_hours": {"start_hour": 9, "start_minute": 0, "end_hour": 18, "end_minute": 0},
+				"holidays": [{"dates": []}]
+			}`
+
+			if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
+				t.Fatalf("一時ファイルの作成に失敗: %v", err)
+			}
+
+			repo := json.NewConfigRepository()
+			_, err := repo.Load(configPath)
 
 			if err == nil {
 				t.Error("エラーが返されませんでした")

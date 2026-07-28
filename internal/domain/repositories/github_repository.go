@@ -26,12 +26,12 @@ type GitHubRepository interface {
 	// 引数:
 	//   - repo: リポジトリ名（org/repo形式）
 	//   - number: PR番号
-	//   - placeholders: プレースホルダーパターンのリスト
+	//   - patterns: 置換パターンのリスト（更新要否の判定にも使用する）
 	//
 	// 戻り値:
 	//   - PR情報
 	//   - エラー
-	GetPRInfo(repo string, number int, placeholders []string) (*entities.PRInfo, error)
+	GetPRInfo(repo string, number int, patterns []entities.ReplacementPattern) (*entities.PRInfo, error)
 
 	// UpdatePRBody はPRのbodyを更新する
 	//

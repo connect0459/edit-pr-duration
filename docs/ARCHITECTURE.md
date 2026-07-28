@@ -186,8 +186,9 @@ workspaces/go/edit-pr-duration/
     "end_minute": 30
   },
   "holidays": [{"dates": ["2025-10-14", "2025-11-04"]}],
-  "placeholders": {"patterns": ["xx 時間", "XX 時間"]},
-  "options": {"dry_run": false, "verbose": true}
+  "replacement_patterns": [
+    {"pattern": "(実際にかかった時間\\s*)xx\\s*時間", "replacement": "${1}{hours}", "hours_format": "ja"}
+  ]
 }
 ```
 

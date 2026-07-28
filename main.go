@@ -35,7 +35,6 @@ func main() {
 		config.Period(),
 		config.WorkHours(),
 		config.Holidays(),
-		config.Placeholders(),
 		config.ReplacementPatterns(),
 		config.Author(),
 		valueobjects.Options{

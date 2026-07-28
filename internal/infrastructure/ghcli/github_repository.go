@@ -88,7 +88,7 @@ func (r *githubRepository) ListPRs(repo string, startDate, endDate time.Time, au
 }
 
 // GetPRInfo はPR詳細情報を取得する
-func (r *githubRepository) GetPRInfo(repo string, number int, placeholders []string) (*entities.PRInfo, error) {
+func (r *githubRepository) GetPRInfo(repo string, number int, patterns []entities.ReplacementPattern) (*entities.PRInfo, error) {
 	parts := strings.SplitN(repo, "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid repo format: %s", repo)
@@ -157,7 +157,7 @@ func (r *githubRepository) GetPRInfo(repo string, number int, placeholders []str
 		}
 	}
 
-	needsUpdate := entities.HasPlaceholder(pr.Body, placeholders)
+	needsUpdate := entities.NeedsReplacement(pr.Body, patterns)
 
 	return entities.NewPRInfo(
 		repo,

@@ -95,7 +95,7 @@ func (r *GitHubRepository) ListPRs(repo string, startDate, endDate time.Time, au
 }
 
 // GetPRInfo はPR詳細情報を取得する
-func (r *GitHubRepository) GetPRInfo(repo string, number int, placeholders []string) (*entities.PRInfo, error) {
+func (r *GitHubRepository) GetPRInfo(repo string, number int, patterns []entities.ReplacementPattern) (*entities.PRInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
