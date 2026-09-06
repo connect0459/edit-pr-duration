@@ -10,17 +10,16 @@ on:
 run-name: CI on ${{ github.head_ref || github.ref_name }}
 
 jobs:
-  run:
+  changes:
     runs-on: ubuntu-latest
-
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Detect changed files
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -30,14 +29,21 @@ jobs:
               - 'go.mod'
               - 'go.sum'
 
+  run:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Set up Go
-        if: steps.filter.outputs.code == 'true'
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
         with:
           go-version-file: go.mod
 
       - name: Run lint and format checks
-        if: steps.filter.outputs.code == 'true'
         shell: bash
         run: |
           echo "Checking Go code formatting..."
@@ -54,21 +60,11 @@ jobs:
           echo "All lint and format checks passed!"
 
       - name: Build
-        if: steps.filter.outputs.code == 'true'
         shell: bash
         run: |
           go build ./...
 
       - name: Run tests
-        if: steps.filter.outputs.code == 'true'
         shell: bash
         run: |
           go test ./...
-
-      - name: Skip CI checks (no relevant changes)
-        if: steps.filter.outputs.code != 'true'
-        shell: bash
-        run: |
-          echo "No changes detected in code-related files."
-          echo "Skipping build, lint, and test steps."
-          echo "CI passed successfully."
