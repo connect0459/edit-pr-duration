@@ -1,3 +1,3 @@
 module github.com/connect0459/edit-pr-duration
 
-go 1.25.5
+go 1.27.3
