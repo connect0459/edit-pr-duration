@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+run-name: CI on ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '.github/workflows/ci.yml'
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+
+  run:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Run lint and format checks
+        shell: bash
+        run: |
+          echo "Checking Go code formatting..."
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+          echo "Running go vet..."
+          go vet ./...
+
+          echo "All lint and format checks passed!"
+
+      - name: Build
+        shell: bash
+        run: |
+          go build ./...
+
+      - name: Run tests
+        shell: bash
+        run: |
+          go test ./...
+
+  gate:
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+      - run
+    if: always()
+    steps:
+      - name: Verify all required jobs succeeded
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        shell: bash
+        run: |
+          echo "One or more required jobs did not succeed."
+          exit 1
