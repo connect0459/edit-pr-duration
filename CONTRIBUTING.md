@@ -70,7 +70,7 @@ Coverage targets are agreed on before starting an implementation; no fixed numer
 
 **Body** (optional): wrap at 72 characters; explain **why**, not what — the diff already shows what changed.
 
-**Footer** (optional): `BREAKING CHANGE: <description>`, or `Closes #123` / `Fixes #456` to link issues.
+**Footer** (optional): `BREAKING CHANGE: <description>`, or `Closes <https://github.com/owner/repo/issues/123>` to link issues.
 
 ## Pull request process
 
