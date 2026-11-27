@@ -155,7 +155,7 @@ edit-pr-duration/
 **Main processing flow:**
 
 1. Get the target repositories and period from the config
-2. Fetch the matching PR list through the GitHub API
+2. Fetch the matching PRs through the GitHub API
 3. Calculate the working time of each PR (using Calculator)
 4. Replace the placeholder (PRInfo.UpdatedBody())
 5. Update the PR through the GitHub API (honors dry-run mode)
@@ -252,7 +252,7 @@ go build -o edit-pr-duration
 | --- | --- |
 | **GitHub authentication** | Uses gh CLI's authentication (token management is left to gh CLI) |
 | **Config file** | config.json is excluded via .gitignore |
-| **Dry-run mode** | Lets you preview changes before running for real |
+| **Dry-run mode** | Previews changes before a real run |
 
 ## 8. Development & Testing Environment
 
@@ -336,7 +336,7 @@ go vet ./...
 | **ADR** | Architecture Decision Record |
 | **TDD** | Test-Driven Development |
 | **DDD** | Domain-Driven Design |
-| **Dry-run** | A mode that only verifies behavior without actually updating anything |
+| **Dry-run** | A mode that only previews behavior without actually updating anything |
 | **Test Object Pattern** | A pattern that manages test data as structs |
 | **Detroit-school TDD** | A TDD style that minimizes mocks and emphasizes collaboration between real objects |
 | **gh CLI** | GitHub's official command-line tool |
