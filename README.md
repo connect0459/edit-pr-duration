@@ -20,7 +20,7 @@ Prerequisites:
 
 - [Go](https://go.dev/dl/) (version pinned in `go.mod`)
 - [GitHub CLI](https://cli.github.com/) (`gh`) installed and authenticated (`gh auth login`)
-- Access permission to the target repositories
+- Permission to access the target repositories
 
 To build from source:
 

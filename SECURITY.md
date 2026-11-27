@@ -8,7 +8,7 @@ Only the latest release is supported with security fixes. As this project is pre
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Use GitHub's [private vulnerability reporting][private-report] feature, or email <connect0459@gmail.com>, to disclose issues confidentially. You can expect an acknowledgement within 7 days and a status update within 30 days.
+Use GitHub's [private vulnerability reporting][private-report] feature, or email <connect0459@gmail.com>, to disclose issues confidentially. You can expect an acknowledgment within 7 days and a status update within 30 days.
 
 **What to include:**
 
